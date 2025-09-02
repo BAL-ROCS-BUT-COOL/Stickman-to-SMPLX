@@ -109,6 +109,13 @@ venv.bak/
 
 # smplx model
 models/
-*.npy
+/output/all_meshes.npy
 *.npz
 *.pkl
+
+# Blender project files
+*.blend
+*.blend1
+*.blend2
+*.blend@
+*.blend#

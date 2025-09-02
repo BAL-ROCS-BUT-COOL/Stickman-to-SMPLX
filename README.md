@@ -46,5 +46,31 @@ python visualize.py --frame FRAME_NUMBER
 This will open an interactive 3D plot (saved as 3d_smplx_plot.html) showing the SMPL-X body mesh along with joint markers and axes.
 
 
-## Blender implementation
- 
+## Blender Implementation
+
+### Setup
+1. Place the output files `all_meshes.npy` and `all_joints.npy` inside the `output/` folder.  
+2. Open your Blender project.  
+3. Switch to the **Scripting** tab.  
+4. Click **Open** → select the `output/` folder → choose `smplx_mesh_body.npy`.  
+5. Run the script.  
+
+### File Overview
+- **`smplx_mesh_body.py`**  
+  Displays the SMPL-X body for all frames.  
+
+- **`smplx_mesh_hands.py`**  
+  Displays only the hands for all frames.  
+
+- **`smplx_mesh_body_and_hands.py`**  
+  Displays the SMPL-X body for all frames and highlights the hands in color.  
+
+### Rendering
+To preview the animation in Blender:
+1. Click the **Python Console** icon (left-hand side).  
+2. Switch to the **Timeline** view.  
+3. Press **Play**.  
+
+---
+
+![Blender SMPL-X Visualization](assets/blender.png)
