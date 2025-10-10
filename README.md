@@ -36,6 +36,13 @@ Run the script to approximate the best fitting smpl-x mesh to the given joints:
 ```
 python get_mesh_from_3dpoints.py
 ```
+This outputs 4 files:
+- **`all_meshes.npy`** 
+- **`all_joints.npy`** 
+- **`all_meshes_smoothed.npy`** (applied low-pass filter)
+- **`all_joints_smoothed.npy`**  (applied low-pass filter)
+
+I recomend using the smoothed files for renders.
 
 ### 3. Visualize the mesh
 After generating the meshes and joints, you can visualize any frame with:
@@ -49,7 +56,7 @@ This will open an interactive 3D plot (saved as 3d_smplx_plot.html) showing the 
 ## Blender Implementation
 
 ### Setup
-1. Place the output files `all_meshes.npy` and `all_joints.npy` inside the `output/` folder.  
+1. Place the output files `all_meshes_smoothed.npy` and `all_joints_smoothed.npy` inside the `output/` folder.  
 2. Open your Blender project.  
 3. Switch to the **Scripting** tab.  
 4. Click **Open** → select the `output/` folder → choose `smplx_mesh_body.npy`.  

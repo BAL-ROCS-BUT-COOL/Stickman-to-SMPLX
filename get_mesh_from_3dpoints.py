@@ -3,6 +3,8 @@ import smplx
 import numpy as np
 import argparse
 import os
+import numpy as np
+from scipy.signal import butter, sosfiltfilt
 
 finger_indices = [
         25, 26, 27, 67,  # left index
@@ -15,8 +17,8 @@ finger_indices = [
         46, 47, 48, 75,  # right pinky
         49, 50, 51, 74, # right ring
         52, 53, 54, 71, # right thumb
-        20, 21, # both wrists
-        18,19 #include elbows
+        # 20, 21, # both wrists
+        # 18,19 #include elbows
     ]
 
 
@@ -255,3 +257,32 @@ np.save(args.out_joints, np.stack(all_joints))
 
 print(f"\n Saved {len(all_meshes)} meshes → {args.out_meshes}")
 print(f"Saved {len(all_joints)} joints → {args.out_joints}")
+
+# ─── Smooth Outputs with Low-pass-filter─────────────────────────────────────────────────────────────
+fps = 30.0                      # your sequence is 30 fps
+cutoff_hz_mesh = 3.0            # keep motions slower than ~3 Hz (tweak!)
+cutoff_hz_joints = 4.0          # joints can tolerate slightly higher cutoff
+order = 3
+
+def lowpass_sos(cutoff_hz, fs, order=3):
+    nyq = fs * 0.5
+    wn = cutoff_hz / nyq
+    return butter(order, wn, btype='low', output='sos')
+
+def smooth_time(data_TxNx3, cutoff_hz):
+    """data: shape (T, N, 3). Returns same shape, filtered along T with zero-phase."""
+    T, N, C = data_TxNx3.shape
+    flat = data_TxNx3.reshape(T, N * C)           # (T, N*3)
+    sos = lowpass_sos(cutoff_hz, fps, order)
+    # sosfiltfilt applies per column when axis=0
+    flat_sm = sosfiltfilt(sos, flat, axis=0)
+    return flat_sm.reshape(T, N, C)
+
+
+# ---- smooth ----
+meshes_sm = smooth_time(all_meshes, cutoff_hz_mesh)
+joints_sm = smooth_time(all_joints, cutoff_hz_joints)
+
+# ---- save ----
+np.save("all_meshes_smoothed.npy", meshes_sm)
+np.save("all_joints_smoothed.npy", joints_sm)

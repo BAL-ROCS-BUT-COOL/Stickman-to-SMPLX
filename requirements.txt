@@ -6,4 +6,5 @@ torchvision==0.22.1
 torchaudio==2.7.1
 numpy==2.3.2
 smplx==0.1.28
-plotly==6.2.0 
+plotly==6.2.0
+scipy==1.16.2

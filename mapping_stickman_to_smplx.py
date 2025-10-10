@@ -113,7 +113,7 @@ joint_mapping = {
     12: 5, # right knee
     13: 7, # left ankle
     14: 8, # right ankle
-    15: 20, # Left wrist
+    15: -1, # Left wrist 20
     16: 37, # left thumb1
     17: 38, # left thumb2
     18: 39, # Left thumb3
@@ -134,7 +134,7 @@ joint_mapping = {
     33: 32, # left pinky2
     34: 33, # left pinky3
     35: 70, # left pinky4
-    36: 21, # right wrist
+    36: -1, # right wrist 21
     37: 52, # right thumb1
     38: 53, # right thumb2
     39: 54, # right thumb3
