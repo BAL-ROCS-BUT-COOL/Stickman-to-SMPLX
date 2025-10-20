@@ -17,7 +17,7 @@ finger_indices = [
         46, 47, 48, 75,  # right pinky
         49, 50, 51, 74, # right ring
         52, 53, 54, 71, # right thumb
-        # 20, 21, # both wrists
+        20, 21, # both wrists
         # 18,19 #include elbows
     ]
 
@@ -250,10 +250,12 @@ for i in range(len(partial_joints)):
     all_meshes.append(mesh)
     all_joints.append(joints)
 
+all_meshes = np.stack(all_meshes)
+all_joints = np.stack(all_joints)
 
 # ─── Save Outputs ─────────────────────────────────────────────────────────────
-np.save(args.out_meshes, np.stack(all_meshes))
-np.save(args.out_joints, np.stack(all_joints))
+np.save(args.out_meshes, all_meshes)
+np.save(args.out_joints, all_joints)
 
 print(f"\n Saved {len(all_meshes)} meshes → {args.out_meshes}")
 print(f"Saved {len(all_joints)} joints → {args.out_joints}")
@@ -284,5 +286,5 @@ meshes_sm = smooth_time(all_meshes, cutoff_hz_mesh)
 joints_sm = smooth_time(all_joints, cutoff_hz_joints)
 
 # ---- save ----
-np.save("all_meshes_smoothed.npy", meshes_sm)
-np.save("all_joints_smoothed.npy", joints_sm)
+np.save(f"smoothed_{args.out_meshes}", meshes_sm)
+np.save(f"smoothed_{args.out_joints}", joints_sm)

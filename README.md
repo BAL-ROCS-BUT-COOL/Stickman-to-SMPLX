@@ -3,6 +3,7 @@
 This repository uses the conventional 3d points of a person and creates the smplx mesh out of them. Using the mesh, it can then be imported in Blender.
 This repo uses python 3.11.9
 ![Stickman 3D visualization](assets/both_plots_demo.png)
+**Figure 1.** Stickman 3D visualization.
 
  
 ## Setup Instructions
@@ -30,7 +31,15 @@ Run the mapping script with your input body and hand joint files:
 python mapping_stickman_to_smplx.py --body BODY_FILE --hand HAND_FILE [--output OUTPUT_FILE]
 ```
 
-### 2. Get the Mesh from SMPL-X partial joints
+Now visualize the data using the **`visualize_joints.py`** file. 
+- Make sure that the body stands along the positive Y-axis. 
+- The pelvis should be close to the origin (0,0,0). 
+- The Person should be facing the positive Z-direction 
+- The left shoulder should be in the positive X-direction and right shoulder in negative X-direction (exactly like the right person in [Figure 1](#figure-1-stickman-3d-visualization).)
+
+If this is not the case, use the permute_axes() function to adjust this and try again. Otherwise the SMPL-X mesh will not look good.
+
+### 2. Get the SMPL-X Mesh
 Run the script to approximate the best fitting smpl-x mesh to the given joints:
 
 ```
