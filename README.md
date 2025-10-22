@@ -68,7 +68,7 @@ This will open an interactive 3D plot (saved as 3d_smplx_plot.html) showing the 
 1. Place the output files `all_meshes_smoothed.npy` and `all_joints_smoothed.npy` inside the `output/` folder.  
 2. Open your Blender project.  
 3. Switch to the **Scripting** tab.  
-4. Click **Open** → select the `output/` folder → choose `smplx_mesh_body.npy`.  
+4. Click **Open** → select the `output/` folder → choose `smplx_mesh_body.py`.  
 5. Run the script.  
 
 ### File Overview
