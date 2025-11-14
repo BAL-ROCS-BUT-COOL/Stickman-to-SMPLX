@@ -17,8 +17,8 @@ args = parser.parse_args()
  
 
 # ─── Load Mesh and Joints ─────────────────────────────────────
-mesh = np.load('anna2_mesh.npy')[args.frame]    # (N_vertices, 3)
-joints = np.load('anna2_joints.npy')[args.frame]  # (N_joints, 3)
+mesh = np.load('smoothed_all_meshes.npy')[args.frame]    # (N_vertices, 3)
+joints = np.load('smoothed_all_joints.npy')[args.frame]  # (N_joints, 3)
 print(mesh.shape)
 print(joints.shape)
 # Load faces from the SMPL-X model
