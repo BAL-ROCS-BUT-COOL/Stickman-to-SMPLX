@@ -108,8 +108,6 @@ venv.bak/
 .mypy_cache/
 
 # smplx model
-models/
-/output/all_meshes.npy
 *.npz
 *.pkl
 
@@ -117,5 +115,3 @@ models/
 *.blend
 *.blend1
 *.blend2
-*.blend@
-*.blend#

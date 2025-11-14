@@ -68,9 +68,9 @@ def permute_axes(joints):
     new_joints = np.stack([y, z, x], axis=-1)
 
     rot_mat = np.array([
-        [1, 0,  0],
+        [-1, 0,  0],
         [ 0, 1,  0],
-        [ 0, 0, 1]
+        [ 0, 0, -1]
     ])
 
 
