@@ -58,8 +58,8 @@ python get_mesh_from_3dpoints.py
 This outputs 4 files:
 - **`all_meshes.npy`** 
 - **`all_joints.npy`** 
-- **`all_meshes_smoothed.npy`** (applied low-pass filter)
-- **`all_joints_smoothed.npy`**  (applied low-pass filter)
+- **`smoothed_all_meshes.npy`** (applied low-pass filter)
+- **`smoothed_all_joints.npy`**  (applied low-pass filter)
 
 I recomend using the smoothed files for renders.
 
