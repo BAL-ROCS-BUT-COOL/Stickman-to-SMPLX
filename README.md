@@ -84,6 +84,7 @@ parent/
 ├── table+model/
 ├── ORXV8_Pose.blend
 └── output_3d/
+    ├── smplx_faces.npy (copy from this repo)
     └── dataset/
         ├── smoothed_all_meshes.npy
         ├── smoothed_all_joints.npy

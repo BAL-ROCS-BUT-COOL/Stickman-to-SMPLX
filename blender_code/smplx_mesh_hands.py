@@ -8,11 +8,11 @@ from datetime import datetime
 # ------------------------------------------------------------------
 # USER SETTINGS
 # ------------------------------------------------------------------
-folder = 'output'
-base_path = Path(bpy.context.blend_data.filepath).parent
-mesh_file = base_path / folder / "all_meshes.npy"
-faces_file = base_path / folder / "smplx_faces.npy"
-joints_file = base_path / folder / "all_joints.npy"
+folder = 'test'
+base_path = Path(bpy.context.blend_data.filepath).parent / "output_3d"
+mesh_file = base_path / folder / "smoothed_all_meshes.npy"
+faces_file = base_path / "smplx_faces.npy"
+joints_file = base_path / folder / "smoothed_all_joints.npy"
 
 vertex_radius = 0.06
 neighborhood_hops = 2
@@ -151,29 +151,29 @@ subsurf.render_levels = 2
 # ------------------------------------------------------------------
 # MATERIAL: dark green for hands
 # ------------------------------------------------------------------
-mat_name = "Hands_DarkGreen"
-mat = bpy.data.materials.get(mat_name)
-if mat is None:
-    mat = bpy.data.materials.new(name=mat_name)
-    mat.use_nodes = True
-    # Set Principled BSDF base color to dark green
-    bsdf = mat.node_tree.nodes.get("Principled BSDF")
-    if bsdf:
-        bsdf.inputs["Base Color"].default_value = (0.05, 0.35, 0.05, 1.0)  # RGBA
-        bsdf.inputs["Roughness"].default_value = 0.6
+#mat_name = "Hands_DarkGreen"
+#mat = bpy.data.materials.get(mat_name)
+#if mat is None:
+#    mat = bpy.data.materials.new(name=mat_name)
+#    mat.use_nodes = True
+#    # Set Principled BSDF base color to dark green
+#    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+#    if bsdf:
+#        bsdf.inputs["Base Color"].default_value = (0.05, 0.35, 0.05, 1.0)  # RGBA
+#        bsdf.inputs["Roughness"].default_value = 0.6
 
-# Ensure the object has the material in slot 0
-if hand_obj.data.materials:
-    hand_obj.data.materials[0] = mat
-else:
-    hand_obj.data.materials.append(mat)
+## Ensure the object has the material in slot 0
+#if hand_obj.data.materials:
+#    hand_obj.data.materials[0] = mat
+#else:
+#    hand_obj.data.materials.append(mat)
 
-# (Optional) viewport color so it looks green in Solid view too
-mat.diffuse_color = (0.05, 0.35, 0.05, 1.0)
+## (Optional) viewport color so it looks green in Solid view too
+#mat.diffuse_color = (0.05, 0.35, 0.05, 1.0)
 
-# Assign the material to all polygons (all are hands here)
-for poly in hand_mesh.polygons:
-    poly.material_index = 0
+## Assign the material to all polygons (all are hands here)
+#for poly in hand_mesh.polygons:
+#    poly.material_index = 0
 
 # ------------------------------------------------------------------
 # TRANSFORMATION FUNCTION
@@ -198,8 +198,31 @@ def transform_mesh_data(mesh_data, translate=(0.0, 0.0, 0.0)):
     transformed_data += np.array(translate)
     return transformed_data
 
-#mesh_data = transform_mesh_data(mesh_data, translate=(0.45, -0.07, 0.07)) #cha1
-mesh_data = transform_mesh_data(mesh_data, translate=(0.49, -0.03, 0.06)) #cha7
+trans = (0,0,0)
+base = (0.49, -0.03, 0.06)
+if folder=='cha1':
+    trans = (0,-0.04,-0.02)
+if folder=='cha2':
+    trans = (0.23,0.23,-0.09)
+if folder=='cha3':
+    trans = (0.25,0.06,-0.05)
+if folder=='cha4':
+    trans = (0.69,-0.68,-0.05)
+if folder=='cha5':
+    trans = (0.05,-0.03,-0.02)
+if folder=='cha6':
+    trans = (0,0.01,-0.03)
+if folder=='cha7':
+    trans = (0,0.04,-0.03)
+if folder=='anna1':
+    trans = (0.09,0,0)
+if folder=='anna2':
+    trans = (0.09,0,0)
+if folder=='anna3':
+    trans = (0.09,0,0)
+    
+translation = tuple(x + y for x, y in zip(base, trans))
+mesh_data = transform_mesh_data(mesh_data, translate=translation) 
 
 # ------------------------------------------------------------------
 # SHAPE KEYS

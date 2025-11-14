@@ -61,18 +61,17 @@ scene.render.fps  = 30
 
 
 ## Optional: static camera list
-#camera_names = ['Camera','Camera.1','Camera.2','Camera.3','Camera.4']
-camera_names = ['GoPro9']
+camera_names = ['Camera.3','Camera.4']
 
 type = "hands_smplx" # "stickman"
-folder = 'cha4'
+folder = 'test'
 output_dir = Path(bpy.path.abspath(f"//renders//{folder}"))
-output_dir.mkdir(exist_ok=True)
+output_dir.mkdir(parents=True,exist_ok=True)
 
 
 # Choose either animation or single‐frame mode:
 RENDER_ONE_FRAME = True
-FRAME_TO_RENDER   = 1   # pick whichever frame you’d like
+FRAME_TO_RENDER   = 1 # pick whichever frame you’d like
 
 
 if RENDER_ONE_FRAME:
