@@ -3,7 +3,7 @@ import bpy
 from pathlib import Path
 
 # ── USER SETTINGS ─────────────────────────────────────────────────────────────
-folder = 'test'                               # subfolder in output_3d
+dataset = 'test'                               # subfolder in output_3d
 translate = (1, -0.5, 0.06)               # final offset after grounding
 subsurf_levels = 2                            # 0 to disable
 object_name = "SMPLX_Body_Animated"           # name in the outliner
@@ -11,7 +11,7 @@ object_name = "SMPLX_Body_Animated"           # name in the outliner
 # File layout (relative to the .blend location or working dir if unsaved)
 blend_path = bpy.data.filepath
 base_dir = (Path(blend_path).parent if blend_path else Path.cwd()) / "output_3d"
-mesh_file  = base_dir / folder / "smoothed_all_meshes.npy"     # shape: (F, V, 3)
+mesh_file  = base_dir / dataset / "smoothed_all_meshes.npy"     # shape: (F, V, 3)
 faces_file = base_dir / "smplx_faces.npy"             # shape: (F_faces, 3)
 
 # ── LOAD DATA ─────────────────────────────────────────────────────────────────

@@ -94,7 +94,7 @@ parent/
 ```
 2. Open the Blender project.  
 3. Switch to the **Scripting** tab and select the **`smplx_mesh_hands_body.py`** or the **`smplx_mesh_hands.py`** file.
-4. Adjust the folder name accordingly in line 7 and run the script.  
+4. Adjust the dataset folder name accordingly in line 7 and run the script.  
 
 ### File Overview
 These files are all saved in the scripting tab of the blender project.

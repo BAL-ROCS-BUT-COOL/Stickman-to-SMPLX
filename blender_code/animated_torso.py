@@ -6,6 +6,8 @@ from mathutils import Vector
 import time
 from datetime import datetime
 
+dataset = "test"
+
 # --- Ensure separate collections for Body and Hands, clearing old objects ---
 for col_name in ("Body", "Hands"):
     if col_name in bpy.data.collections:
@@ -265,8 +267,7 @@ class PoseData:
 
 
 # --- Main execution ---
-folder = "test"
-data = PoseData(folder)
+data = PoseData(dataset)
 stick = Keypoints(data, CONNECTIONS)
 FRAMES = data.body.shape[0]
 for frame in range(FRAMES):

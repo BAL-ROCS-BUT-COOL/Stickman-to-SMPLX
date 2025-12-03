@@ -8,11 +8,11 @@ from datetime import datetime
 # ------------------------------------------------------------------
 # USER SETTINGS
 # ------------------------------------------------------------------
-folder = 'test'
+dataset = 'test'
 base_path = Path(bpy.context.blend_data.filepath).parent / "output_3d"
-mesh_file = base_path / folder / "smoothed_all_meshes.npy"
+mesh_file = base_path / dataset / "smoothed_all_meshes.npy"
 faces_file = base_path / "smplx_faces.npy"
-joints_file = base_path / folder / "smoothed_all_joints.npy"
+joints_file = base_path / dataset / "smoothed_all_joints.npy"
 
 vertex_radius = 0.06
 neighborhood_hops = 2
@@ -200,25 +200,25 @@ def transform_mesh_data(mesh_data, translate=(0.0, 0.0, 0.0)):
 
 trans = (0,0,0)
 base = (0.49, -0.03, 0.06)
-if folder=='cha1':
+if dataset=='cha1':
     trans = (0,-0.04,-0.02)
-if folder=='cha2':
+if dataset=='cha2':
     trans = (0.23,0.23,-0.09)
-if folder=='cha3':
+if dataset=='cha3':
     trans = (0.25,0.06,-0.05)
-if folder=='cha4':
+if dataset=='cha4':
     trans = (0.69,-0.68,-0.05)
-if folder=='cha5':
+if dataset=='cha5':
     trans = (0.05,-0.03,-0.02)
-if folder=='cha6':
+if dataset=='cha6':
     trans = (0,0.01,-0.03)
-if folder=='cha7':
+if dataset=='cha7':
     trans = (0,0.04,-0.03)
-if folder=='anna1':
+if dataset=='anna1':
     trans = (0.09,0,0)
-if folder=='anna2':
+if dataset=='anna2':
     trans = (0.09,0,0)
-if folder=='anna3':
+if dataset=='anna3':
     trans = (0.09,0,0)
     
 translation = tuple(x + y for x, y in zip(base, trans))

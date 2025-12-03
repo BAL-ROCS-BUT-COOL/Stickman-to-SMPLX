@@ -4,7 +4,7 @@ from pathlib import Path
 from collections import deque
 
 # ── USER SETTINGS ─────────────────────────────────────────────────────────────
-folder = 'test'                               # subfolder in output_3d
+dataset = 'test'                               # subfolder in output_3d
 translate = (1.0, -0.5, 0.06)                 # final offset after grounding
 subsurf_levels = 2                            # 0..3 typically
 object_name = "SMPLX_BodyHands_Animated"      # name in the outliner
@@ -23,9 +23,9 @@ fingertip_indices = [36, 37, 38, 39, 40, 41, 42, 43, 44, 45]
 # ── FILES ─────────────────────────────────────────────────────────────────────
 blend_path = bpy.data.filepath
 base_dir = (Path(blend_path).parent if blend_path else Path.cwd()) / "output_3d"
-mesh_file   = base_dir / folder / "smoothed_all_meshes.npy"     # (F, V, 3)
+mesh_file   = base_dir / dataset / "smoothed_all_meshes.npy"     # (F, V, 3)
 faces_file  = base_dir / "smplx_faces.npy"             # (F_faces, 3)
-joints_file = base_dir / folder / "smoothed_all_joints.npy"   # (F, n_joints, 3)
+joints_file = base_dir / dataset / "smoothed_all_joints.npy"   # (F, n_joints, 3)
 
 # ── LOAD DATA ─────────────────────────────────────────────────────────────────
 mesh_data = np.load(mesh_file)      # (num_frames, num_vertices, 3)
