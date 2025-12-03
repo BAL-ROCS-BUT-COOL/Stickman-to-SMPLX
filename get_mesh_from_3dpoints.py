@@ -207,7 +207,7 @@ parser = argparse.ArgumentParser(description="Fit SMPL-X meshes from partial joi
 parser.add_argument(
     "--joints",
     type=str,
-    default="smplx_joints.npy",   # default file
+    default="data/smplx_joints.npy",   # default file
     help="Path to .npy file containing partial joints (default: smplx_joints.npy)"
 )
 parser.add_argument(
@@ -219,13 +219,13 @@ parser.add_argument(
 parser.add_argument(
     "--out_meshes",
     type=str,
-    default="all_meshes.npy",
+    default="data/all_meshes.npy",
     help="Output .npy file for meshes (default: all_meshes.npy)"
 )
 parser.add_argument(
     "--out_joints",
     type=str,
-    default="all_joints.npy",
+    default="data/all_joints.npy",
     help="Output .npy file for joints (default: all_joints.npy)"
 )
 args = parser.parse_args()
@@ -286,5 +286,8 @@ meshes_sm = smooth_time(all_meshes, cutoff_hz_mesh)
 joints_sm = smooth_time(all_joints, cutoff_hz_joints)
 
 # ---- save ----
-np.save(f"smoothed_{args.out_meshes}", meshes_sm)
-np.save(f"smoothed_{args.out_joints}", joints_sm)
+folder_m, fname_m = os.path.split(args.out_meshes)
+np.save(os.path.join(folder_m, f"smoothed_{fname_m}"), meshes_sm)
+
+folder_j, fname_j = os.path.split(args.out_joints)
+np.save(os.path.join(folder_j, f"smoothed_{fname_j}"), joints_sm)

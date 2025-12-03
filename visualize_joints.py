@@ -12,7 +12,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-unmapped_joints = np.load('smplx_joints.npy')[args.frame]  # (N_joints, 3)
+unmapped_joints = np.load('data/smplx_joints.npy')[args.frame]  # (N_joints, 3)
 print(unmapped_joints.shape)
 
 joints, mask = apply_joint_mapping(unmapped_joints, joint_mapping)

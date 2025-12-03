@@ -16,12 +16,13 @@ This repo uses python 3.11.9
 ### Setup Environment
 Create a new Python virtual environment (recommended to keep dependencies isolated) and download requirements.
 
-- **Windows (PowerShell or CMD):**
-  ```powershell
+**Windows (PowerShell or CMD):**
+  ```
   python -m venv venv
   .\venv\Scripts\activate
   pip install --upgrade pip
   pip install -r requirements.txt
+```
 
 Download the smplx models from the [project website](https://smpl-x.is.tue.mpg.de/) and put the models folder in the same directory.
 

@@ -117,6 +117,3 @@ venv.bak/
 *.blend1
 *.blend2
 
-#specific files
-all_joints.npy
-all_meshes.npy

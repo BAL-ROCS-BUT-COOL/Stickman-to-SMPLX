@@ -17,8 +17,8 @@ args = parser.parse_args()
  
 
 # ─── Load Mesh and Joints ─────────────────────────────────────
-mesh = np.load('smoothed_all_meshes.npy')[args.frame]    # (N_vertices, 3)
-joints = np.load('smoothed_all_joints.npy')[args.frame]  # (N_joints, 3)
+mesh = np.load('data/smoothed_all_meshes.npy')[args.frame]    # (N_vertices, 3)
+joints = np.load('data/smoothed_all_joints.npy')[args.frame]  # (N_joints, 3)
 print(mesh.shape)
 print(joints.shape)
 # Load faces from the SMPL-X model
@@ -87,6 +87,7 @@ layout = go.Layout(
 
 fig = go.Figure(data=[mesh_plot, scatter] + axes, layout=layout)
 
-# Save and open in browser
-file_path = os.path.abspath("3d_smplx_plot.html")
-fig.write_html(file_path, auto_open=True)
+
+import plotly.io as pio
+pio.renderers.default = "browser"
+fig.show()

@@ -7,7 +7,7 @@ from joints import joint_mapping
 parser = argparse.ArgumentParser(description="Combine body and hand 3D joints into SMPL-X format")
 parser.add_argument("--body", type=str, required=True, help="Path to body .npz file")
 parser.add_argument("--hand", type=str, required=True, help="Path to hand .npz file")
-parser.add_argument("--output", type=str, default="smplx_joints.npy", help="Output .npy filename")
+parser.add_argument("--output", type=str, default="data/smplx_joints.npy", help="Output .npy filename")
 args = parser.parse_args()
 
 # ─── Load Data ────────────────────────────────────────────────────────────────
