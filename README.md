@@ -78,7 +78,7 @@ This will open an interactive 3D plot (saved as 3d_smplx_plot.html) showing the 
 # Blender Implementation
 
 ### Setup
-1. Place the output files `smoothed_all_meshes.npy` and `smoothed_all_joints.npy` inside an `output_3d/` folder next to the **ORXV8_Pose.blend** file. Donload the blender file  at: W:\Forschung-CARD\Mitarbeiter\Zivildiener\DTORX.
+1. Download the blender file  at: W:\Forschung-CARD\Mitarbeiter\Zivildiener\DTORX. Place the output files `smoothed_all_meshes.npy` and `smoothed_all_joints.npy` inside a dataset folder inside of an `output_3d/` folder next to the **ORXV8_Pose.blend** file. 
 The file structure should be as follows:
 ```
 parent/
