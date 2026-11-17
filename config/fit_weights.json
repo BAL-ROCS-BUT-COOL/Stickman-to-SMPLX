@@ -1,0 +1,9 @@
+{
+  "_description": "Position-loss weight per SMPL-X joint, read by get_mesh_from_smplx.py and get_skinned_mesh_from_smplx.py (--weights FILE for another file). 'default' applies to every joint, 'groups' override it, 'joints' (SMPL-X names or indices 0-75) override groups. Groups: wrists, fingers, left_fingers, right_fingers. Fingers include the fingertips.",
+  "default": 1.0,
+  "groups": {
+    "wrists": 5.0,
+    "fingers": 5.0
+  },
+  "joints": {}
+}

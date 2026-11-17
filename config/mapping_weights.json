@@ -1,0 +1,7 @@
+{
+  "_description": "Joints that keep their exact position when mapping_stickman_to_smplx.py enforces constant bone lengths, most important first. Every joint not listed gives way. Names: nose, neck, pelvis, left_ear, right_ear, left_shoulder, right_shoulder, left_elbow, right_elbow, left_hip, right_hip, left_knee, right_knee, left_ankle, right_ankle, left_hand_wrist, right_hand_wrist, or a combined keypoint index (--weights FILE for another file).",
+  "priority": [
+    "left_hand_wrist",
+    "right_hand_wrist"
+  ]
+}

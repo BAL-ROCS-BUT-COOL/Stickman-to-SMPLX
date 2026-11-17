@@ -7,7 +7,9 @@ Fitter A (get_skinned_mesh_from_smplx.py) is the plain SMPL-X fit: rotations onl
 starts from that fit and replaces the chains you name with RAW chains: bones driven directly by the (triangulated)
 keypoints, so every bone head lands on its keypoint -- typically the hands. Everything else stays exactly the fit.
 
-    python get_hybrid_pose_from_stickman.py --pose-dir <Pose_set> [--raw hands] [--raw-mode exact|rotation]
+    python get_hybrid_pose_from_stickman.py [--pose-dir <Pose_set>] [--raw hands] [--raw-mode exact|rotation]
+
+  --pose-dir    the pose folder (default: data, relative to where you run the command)
 
   --raw         chains / groups (comma separated) that come from the pose data. Chains: torso, left_leg, right_leg,
                 left_arm, right_arm, left_wrist, right_wrist, <side>_<finger> (left_index, right_thumb, ...).
@@ -18,12 +20,15 @@ keypoints, so every bone head lands on its keypoint -- typically the hands. Ever
                 rotation  raw bones only ROTATE and keep their template length; only the root of each raw region (the
                           wrist) sits on its keypoint, the rest follows rigidly. No location / scale channels to fight
                           when editing by hand; the price is that finger heads no longer hit noisy keypoints.
-  --config      JSON file overriding any setting below (SCALE_MODE, SNAP_SCALE, LOCK_LENGTH_BONES, ...)
+  --config      settings JSON (default: config/hybrid.json); every setting below (SCALE_MODE, SNAP_SCALE, LOCK_LENGTH_BONES, ...) can be set there
 
-Reads (all in --pose-dir):   body_poses_3d.npz, hand_poses_3d.npz, joint_transforms.npy, armature_rig_metadata.npz,
-                             and the SMPL-X fit named by import_config.json's "pose_params" (or --pose-params)
-Writes:                      hybrid_channels.npz (or --out); add  "pose_channels": "hybrid_channels.npz"  to
-                             import_config.json and inject_animation.py picks it up.
+Reads (inside --pose-dir):   body_poses_3d.npz, hand_poses_3d.npz, joint_transforms.npy,
+                             skinned_smplx/armature_rig_metadata.npz (or --rig),
+                             and the SMPL-X fit named by import_config.json's "pose_params" (or --pose-params),
+                             e.g. skinned_smplx/armature_pose_params_smoothed.npz
+Writes:                      pose_smplx_hybrid/hybrid_channels.npz (or --out); add
+                             "pose_channels": "pose_smplx_hybrid/hybrid_channels.npz"  to import_config.json
+                             and inject_animation.py picks it up.
 
 Every function between the settings and "NEW" is moved verbatim from inject_animation.py (the numpy half of the old
 hybrid importer); the solver itself is unchanged.
@@ -31,16 +36,21 @@ hybrid importer); the solver itself is unchanged.
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
 
+# smplx_rig_common.py sits next to this script. Look there first, so the import works from any working folder and when another script imports this file.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import smplx_rig_common as rc
 from smplx_rig_common import (CHAINS, SIDES, FINGERS, SMPLX_BODY, SMPLX_FINGER_OFFSET, NUM_JOINTS,
                               SOURCE_SMPLX, SOURCE_RAW, SOURCE_ADJUSTED, _log, _unit, _swing, _polar_rotation, _quat_wxyz,
                               realized_affines, skin_joint_affines, resolve_chains)
 
-# ── SETTINGS (each can be overridden with --config <json>) ────────────────────
+DEFAULT_CONFIG = Path(__file__).resolve().parent / "config" / "hybrid.json"
+
+# ── SETTINGS (defaults; config/hybrid.json, or --config <json>, overrides them) ────────────────────
 # Which side is which. Defaults follow joints.py: body[5/7/11/13/15] and the FIRST hand block are the LEFT side.
 SWAP_BODY_SIDES = False
 SWAP_HAND_SIDES = False
@@ -101,6 +111,8 @@ def apply_settings(overrides):
     turned back into the sets / int-keyed dicts the code expects."""
     g = globals()
     for k, v in overrides.items():
+        if k.startswith("_"):
+            continue
         if k not in _SETTING_KEYS:
             raise KeyError(f"Unknown setting {k!r}. Valid: {_SETTING_KEYS}")
         if k == "LOCK_LENGTH_BONES":
@@ -811,10 +823,10 @@ def load_keypoints(pose_dir):
 def main(argv=None):
     global RAW_CHAINS, RAW_MODE, SCALE_MODE, SNAP_SEAMS, SWAP_BODY_SIDES, SWAP_HAND_SIDES
     ap = argparse.ArgumentParser(description="SMPL-X fit + RAW chains -> channel file")
-    ap.add_argument("--pose-dir", required=True, type=Path)
-    ap.add_argument("--rig", type=Path, default=None, help="armature_rig_metadata.npz (default: <pose-dir>/armature_rig_metadata.npz)")
-    ap.add_argument("--pose-params", default=None, help="plain SMPL-X fit file name in pose-dir (default: import_config.json 'pose_params')")
-    ap.add_argument("--out", default="hybrid_channels.npz", help="output file name (in pose-dir unless absolute)")
+    ap.add_argument("--pose-dir", type=Path, default=Path("data"), help="pose folder holding the inputs and the skinned_smplx/ results (default: data)")
+    ap.add_argument("--rig", type=Path, default=None, help="armature_rig_metadata.npz (default: <pose-dir>/skinned_smplx/armature_rig_metadata.npz)")
+    ap.add_argument("--pose-params", default=None, help="plain SMPL-X fit file, relative to pose-dir, e.g. skinned_smplx/armature_pose_params_smoothed.npz (default: import_config.json 'pose_params')")
+    ap.add_argument("--out", default="pose_smplx_hybrid/hybrid_channels.npz", help="output file (relative to pose-dir unless absolute; default: pose_smplx_hybrid/hybrid_channels.npz)")
     ap.add_argument("--raw", default=None, help="chains / groups taken from the pose data, comma separated (default: hands)")
     ap.add_argument("--raw-mode", choices=["exact", "rotation"], default=None)
     ap.add_argument("--scale-mode", choices=["none", "static", "uniform", "along_bone"], default=None)
@@ -823,11 +835,13 @@ def main(argv=None):
     ap.add_argument("--joint-transform", default="joint_transforms.npy")
     ap.add_argument("--swap-body-sides", action="store_true")
     ap.add_argument("--swap-hand-sides", action="store_true")
-    ap.add_argument("--config", type=Path, default=None, help="JSON with setting overrides")
+    ap.add_argument("--config", type=Path, default=None, help="settings JSON (default: config/hybrid.json next to the script)")
     args = ap.parse_args(argv)
 
-    if args.config:
-        apply_settings(json.loads(args.config.read_text()))
+    config_path = args.config or DEFAULT_CONFIG
+    if not config_path.exists():
+        raise FileNotFoundError(f"Settings file not found: {config_path}")
+    apply_settings(json.loads(config_path.read_text(encoding="utf-8")))
     if args.raw is not None:
         RAW_CHAINS = args.raw
     if args.raw_mode:
@@ -840,7 +854,7 @@ def main(argv=None):
     SWAP_HAND_SIDES |= args.swap_hand_sides
 
     pose_dir = args.pose_dir
-    rig_path = args.rig or pose_dir / "armature_rig_metadata.npz"
+    rig_path = args.rig or pose_dir / "skinned_smplx" / "armature_rig_metadata.npz"
     rig = rc.build_rig(np.load(rig_path))
     raw_joints = resolve_chains(RAW_CHAINS)
     pure = set(raw_joints) == set(range(NUM_JOINTS))
@@ -889,8 +903,13 @@ def main(argv=None):
                 pose_params=pp_name, residuals_mm=res,
                 snap=[dict(kind=r["kind"], p=r["p"], c=r["c"], gap_before_mm_mean=float(r["gap_before"].mean() * 1000),
                            gap_after_mm_mean=float(r["gap_after"].mean() * 1000)) for r in m["snap"]])
+    out.parent.mkdir(parents=True, exist_ok=True)   # e.g. <pose-dir>/pose_smplx_hybrid/
     rc.save_channels(out, rig, m["channels"], meta)
-    _log(f"Saved {out}.  To use it, add  \"pose_channels\": \"{out.name}\"  to {pose_dir / 'import_config.json'}.")
+    try:
+        channels_name = out.resolve().relative_to(pose_dir.resolve()).as_posix()    # the value import_config.json needs
+    except ValueError:
+        channels_name = out.as_posix()
+    _log(f"Saved {out}.  To use it, add  \"pose_channels\": \"{channels_name}\"  to {pose_dir / 'import_config.json'}.")
     return m
 
 

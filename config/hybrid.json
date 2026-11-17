@@ -1,0 +1,37 @@
+{
+  "_description": "Settings for get_hybrid_pose_from_stickman.py (--config FILE for another file). These are the values the script uses; the command-line flags --raw, --raw-mode, --scale-mode, --no-snap and --swap-* override them. Not importance weights: weight_threshold is a cutoff on the mesh skinning weights.",
+  "SWAP_BODY_SIDES": false,
+  "SWAP_HAND_SIDES": false,
+  "RAW_CHAINS": [
+    "hands"
+  ],
+  "RAW_MODE": "exact",
+  "SCALE_MODE": "none",
+  "SNAP_SEAMS": true,
+  "SNAP_SCALE": "along_bone",
+  "SNAP_MAX_STRETCH": 0.25,
+  "LOCK_LENGTH_BONES": [
+    18,
+    19
+  ],
+  "LOCK_LENGTH_TO": "mean",
+  "LOCK_PARENT_MAX_STRETCH": 0.25,
+  "LOCK_OVERFLOW_MAX_STRETCH": 0.25,
+  "FOREARM_ROLL_TO_WRIST_PERCENT": 80.0,
+  "FOREARM_ROLL_BONES": {
+    "18": 20,
+    "19": 21
+  },
+  "UPPERARM_ROLL_TO_FOREARM_PERCENT": 0.0,
+  "UPPERARM_ROLL_BONES": {
+    "16": 18,
+    "17": 19
+  },
+  "ROLL_UNWRAP_OVER_TIME": true,
+  "RIGID_FEET": true,
+  "FINGERTIP_BONE_TO_KEYPOINT": true,
+  "weight_threshold": 0.001,
+  "CHEST_STUB": 0.08,
+  "HEAD_STUB": 0.16,
+  "FALLBACK_TIP_LENGTH": 0.03
+}
