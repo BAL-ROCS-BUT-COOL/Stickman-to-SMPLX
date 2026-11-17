@@ -1,0 +1,7 @@
+{
+  "mesh_name": "SMPLX_skinned",
+  "armature_name": "SMPLX_armature",
+  "target_collection_name": "SMPLX",
+  "pose_params": "skinned_smplx/armature_pose_params_smoothed.npz",
+  "pose_channels": "pose_smplx_hybrid/hybrid_channels.npz"
+}
