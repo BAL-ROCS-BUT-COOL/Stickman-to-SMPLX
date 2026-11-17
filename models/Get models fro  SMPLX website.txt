@@ -1,0 +1,3 @@
+Download the smplx models from the project website (https://smpl-x.is.tue.mpg.de/).
+
+Relevant project: https://github.com/alanm-2000/Stickman-to-SMPLX/tree/main
