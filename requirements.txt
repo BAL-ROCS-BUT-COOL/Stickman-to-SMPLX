@@ -1,10 +1,13 @@
---index-url https://download.pytorch.org/whl/cu118
---extra-index-url https://pypi.org/simple
-
-torch==2.7.1
-torchvision==0.22.1
-torchaudio==2.7.1
-numpy==2.3.2
+# Stickman-to-SMPLX
+# Python 3.11 or newer (tested on 3.13; every package below has wheels for 3.14).
+# Tested sets: torch 2.7.1 + numpy 2.3.2 + scipy 1.16.2 + plotly 6.2.0, and torch 2.15.0 + numpy 2.5.5 + scipy 1.18.1 + plotly 7.1.0. smplx 0.1.28 is the newest smplx.
+# torch: no version pin and no index line, so pip takes the newest wheel that exists for your Python. On Windows the PyPI wheel is the CPU build.
+# GPU: install torch first with the command from https://pytorch.org/get-started/locally/ (pick your CUDA version), then run pip install -r requirements.txt. The installed GPU torch satisfies the line below and is kept.
+# Not needed: torchvision, torchaudio.
+# Used by: torch + smplx (get_mesh_from_smplx.py, get_skinned_mesh_from_smplx.py), numpy (all scripts), scipy (the two fitters), plotly (visualize_joints.py, visualize_smplx.py).
+# preview_compare.py, mapping_stickman_to_smplx.py and get_hybrid_pose_from_stickman.py need numpy only.
+torch>=2.7.1
+numpy>=2.3.2,<3
+scipy>=1.16.2,<2
 smplx==0.1.28
-plotly==6.2.0
-scipy==1.16.2
+plotly>=6.2.0,<8
