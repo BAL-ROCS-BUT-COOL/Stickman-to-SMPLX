@@ -6,6 +6,8 @@ import argparse
 
 # ─── Arguments ────────────────────────────────────────────────
 parser = argparse.ArgumentParser(description="Visualize SMPL-X mesh and joints")
+parser.add_argument("--pose-dir", default="data", help="pose folder holding meshed_smplx/ (default: data)")
+parser.add_argument("--model", default="models", help="SMPL-X model folder (default: models)")
 parser.add_argument(
     "--frame",
     type=int,
@@ -17,13 +19,13 @@ args = parser.parse_args()
  
 
 # ─── Load Mesh and Joints ─────────────────────────────────────
-mesh = np.load('data/meshed_smplx/smoothed_all_meshes.npy')[args.frame]    # (N_vertices, 3)
-joints = np.load('data/meshed_smplx/smoothed_all_joints.npy')[args.frame]  # (N_joints, 3)
+mesh = np.load(os.path.join(args.pose_dir, 'meshed_smplx', 'smoothed_all_meshes.npy'))[args.frame]    # (N_vertices, 3)
+joints = np.load(os.path.join(args.pose_dir, 'meshed_smplx', 'smoothed_all_joints.npy'))[args.frame]  # (N_joints, 3)
 print(mesh.shape)
 print(joints.shape)
 # Load faces from the SMPL-X model
 
-model = smplx.create("models", model_type='smplx')
+model = smplx.create(args.model, model_type='smplx')
 faces = model.faces  # (F, 3)
 
 # ─── Plotly Mesh for the SMPL-X Body ───────────────────────────

@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SMPL-X compare</title>
+<style>
+  :root { --bg:#14161b; --panel:#1b1e25; --edge:#2b303a; --text:#d9dde5; --dim:#8b93a3; --accent:#4ea8de; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--text); font:13px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #bar { position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:8px 12px; background:#10121a; border-bottom:1px solid var(--edge); }
+  #bar button { background:var(--panel); color:var(--text); border:1px solid var(--edge); border-radius:6px; padding:5px 11px; font:inherit; cursor:pointer; min-width:38px; }
+  #bar button:hover { border-color:var(--accent); }
+  #bar button.on { background:var(--accent); color:#06121c; border-color:var(--accent); }
+  #bar input[type=range] { flex:1 1 240px; min-width:160px; accent-color:var(--accent); }
+  #bar input[type=number], #bar select { background:var(--panel); color:var(--text); border:1px solid var(--edge); border-radius:6px; padding:4px 6px; font:inherit; }
+  #bar input[type=number] { width:60px; }
+  #bar label { color:var(--dim); display:flex; align-items:center; gap:5px; white-space:nowrap; }
+  #frameLabel { font-variant-numeric:tabular-nums; min-width:170px; }
+  #stat { color:var(--dim); margin-left:auto; font-variant-numeric:tabular-nums; }
+  #grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:6px; }
+  .panel { position:relative; background:var(--panel); border:1px solid var(--edge); border-radius:8px; overflow:hidden; height:calc((100vh - var(--barh, 52px) - 24px) / var(--rows, 2)); min-height:260px; }
+  .panel.wide { grid-column:1 / span 2; }
+  .panel canvas { position:absolute; inset:0; width:100%; height:100%; display:block; cursor:grab; touch-action:none; }
+  .panel canvas:active { cursor:grabbing; }
+  .cap { position:absolute; left:10px; top:8px; font-weight:600; pointer-events:none; text-shadow:0 1px 3px #000; }
+  .cap small { font-weight:400; color:var(--dim); margin-left:6px; }
+  .sw { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:-1px; }
+  .msg { position:absolute; inset:0; display:none; align-items:center; justify-content:center; text-align:center; padding:30px; color:var(--dim); pointer-events:none; }
+  .panel.empty .msg { display:flex; }
+  .panel.empty canvas { visibility:hidden; }
+  .toggles { position:absolute; right:8px; top:8px; display:flex; flex-direction:column; gap:3px; background:#10121acc; border:1px solid var(--edge); border-radius:6px; padding:6px 8px; }
+  .toggles label { display:flex; align-items:center; gap:6px; cursor:pointer; }
+  .toggles label.off { color:#566; cursor:not-allowed; }
+  .toggles input[type=range] { width:90px; accent-color:var(--accent); }
+  .legend { position:absolute; left:10px; bottom:8px; color:var(--dim); font-size:12px; pointer-events:none; text-shadow:0 1px 3px #000; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <button id="bFirst" title="first frame (Home)">|&#9664;</button>
+  <button id="bBack" title="1 frame back (Left arrow)">&#9664; 1</button>
+  <button id="bPlay" title="play / stop (Space)">&#9654; Play</button>
+  <button id="bFwd" title="1 frame forward (Right arrow)">1 &#9654;</button>
+  <button id="bLast" title="last frame (End)">&#9654;|</button>
+  <input id="slider" type="range" min="0" max="0" value="0">
+  <span id="frameLabel"></span>
+  <label>speed <select id="speed"><option value="0.1">0.1x</option><option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option></select></label>
+  <label>fps <input id="fps" type="number" min="1" max="240" step="1"></label>
+  <label><input id="loop" type="checkbox" checked> loop</label>
+  <label><input id="link" type="checkbox" checked> link cameras</label>
+  <span id="stat"></span>
+</div>
+<div id="grid"></div>
+
+<script>/*__DATA__*/</script>
+<script>
+"use strict";
+// ───────────────────────────── data ─────────────────────────────
+const N = DATA.N;
+const bytes = s => { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
+const f32 = s => new Float32Array(bytes(s).buffer);
+const u32 = s => new Uint32Array(bytes(s).buffer);
+async function inflate(u8) {
+  const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream("deflate"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+const COL = {   // one colour per layer, used in every panel
+  pose:[0.95,0.76,0.31], joints:[0.31,0.66,0.87], mesh:[0.37,0.79,0.65], fit:[0.94,0.46,0.48], hybrid:[0.71,0.56,0.68],
+  raw:[0.95,0.76,0.31], adjusted:[1.0,0.62,0.26], grid:[0.30,0.33,0.40]
+};
+const hex = c => "#" + c.map(v => Math.round(v * 255).toString(16).padStart(2, "0")).join("");
+const TITLES = {
+  pose: ["Pose", "stickman keypoints"], joints: ["SMPL-X joints", "smplx_joints.npy"], mesh: ["SMPL-X mesh", "meshed_smplx"],
+  fit: ["Skinned mesh + armature", "SMPL-X fit"], hybrid: ["Hybrid", "fit + raw chains"], overlay: ["Overlay", "all layers"]
+};
+const LAYER_OF = { pose:"pose", joints:"joints", mesh:"mesh", fit:"fit", hybrid:"hybrid" };
+
+const L = {};      // decoded layers
+const rig = {};
+let faces = null;
+
+async function decode() {
+  const d = DATA.layers;
+  if (DATA.faces) faces = u32(DATA.faces);
+  if (d.pose) L.pose = { n: d.pose.n, pts: f32(d.pose.pts), edges: d.pose.edges, note: d.pose.note };
+  if (d.joints) L.joints = { n: d.joints.n, pts: f32(d.joints.pts), edges: d.joints.edges };
+  if (d.mesh) {
+    const m = d.mesh, nv = m.V * 3, raw = await inflate(bytes(m.b64));
+    const q = new Int16Array(N * nv);
+    for (let i = 0; i < N * nv; i++) q[i] = raw[i] | (raw[N * nv + i] << 8);
+    for (let f = 1; f < N; f++) { const a = f * nv, b = a - nv; for (let i = 0; i < nv; i++) q[a + i] = q[b + i] + q[a + i]; }   // Int16 wraps like the encoder
+    L.mesh = { V: m.V, q, origin: m.origin, step: m.step, joints: m.joints ? { n: m.joints.n, pts: f32(m.joints.pts) } : null };
+  }
+  if (DATA.rig) {
+    Object.assign(rig, { V: DATA.rig.V, K: DATA.rig.K, nj: DATA.rig.nj, rest: f32(DATA.rig.rest), idx: bytes(DATA.rig.idx), w: f32(DATA.rig.w) });
+    for (const k of ["fit", "hybrid"]) if (d[k]) L[k] = { A: f32(d[k].A), pos: f32(d[k].pos), n: d[k].n, edges: d[k].edges, src: d[k].src };
+  }
+}
+
+// frame data of the three meshes, computed on demand and kept for the current frame
+const meshCache = {};
+function meshFrame(layer, f) {
+  let c = meshCache[layer];
+  if (c && c.f === f) return c;
+  const V = layer === "mesh" ? L.mesh.V : rig.V;
+  if (!c) c = meshCache[layer] = { f: -1, pos: new Float32Array(V * 3), nrm: new Float32Array(V * 3) };
+  const pos = c.pos, nrm = c.nrm;
+  if (layer === "mesh") {
+    const q = L.mesh.q, o = L.mesh.origin, s = L.mesh.step, base = f * V * 3;
+    for (let i = 0; i < V; i++) { const k = i * 3; pos[k] = o[0] + s * q[base + k]; pos[k + 1] = o[1] + s * q[base + k + 1]; pos[k + 2] = o[2] + s * q[base + k + 2]; }
+  } else {
+    const A = L[layer].A, K = rig.K, rest = rig.rest, idx = rig.idx, w = rig.w, fb = f * rig.nj * 12;
+    for (let v = 0; v < V; v++) {
+      const x = rest[v * 3], y = rest[v * 3 + 1], z = rest[v * 3 + 2];
+      let ox = 0, oy = 0, oz = 0;
+      for (let k = 0; k < K; k++) {
+        const wk = w[v * K + k]; if (wk === 0) continue;
+        const o = fb + idx[v * K + k] * 12;
+        ox += wk * (A[o] * x + A[o + 1] * y + A[o + 2] * z + A[o + 9]);
+        oy += wk * (A[o + 3] * x + A[o + 4] * y + A[o + 5] * z + A[o + 10]);
+        oz += wk * (A[o + 6] * x + A[o + 7] * y + A[o + 8] * z + A[o + 11]);
+      }
+      pos[v * 3] = ox; pos[v * 3 + 1] = oy; pos[v * 3 + 2] = oz;
+    }
+  }
+  nrm.fill(0);
+  for (let t = 0; t < faces.length; t += 3) {
+    const a = faces[t] * 3, b = faces[t + 1] * 3, c2 = faces[t + 2] * 3;
+    const e1x = pos[b] - pos[a], e1y = pos[b + 1] - pos[a + 1], e1z = pos[b + 2] - pos[a + 2];
+    const e2x = pos[c2] - pos[a], e2y = pos[c2 + 1] - pos[a + 1], e2z = pos[c2 + 2] - pos[a + 2];
+    const nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+    nrm[a] += nx; nrm[a + 1] += ny; nrm[a + 2] += nz; nrm[b] += nx; nrm[b + 1] += ny; nrm[b + 2] += nz; nrm[c2] += nx; nrm[c2 + 1] += ny; nrm[c2 + 2] += nz;
+  }
+  for (let i = 0; i < V; i++) {
+    const k = i * 3, l = Math.hypot(nrm[k], nrm[k + 1], nrm[k + 2]) || 1;
+    nrm[k] /= l; nrm[k + 1] /= l; nrm[k + 2] /= l;
+  }
+  c.f = f;
+  return c;
+}
+
+// ───────────────────────────── small math ─────────────────────────────
+const v3 = { add:(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]], sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], mul:(a,s)=>[a[0]*s,a[1]*s,a[2]*s],
+  dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],
+  norm:a=>{const l=Math.hypot(a[0],a[1],a[2])||1;return [a[0]/l,a[1]/l,a[2]/l];} };
+function lookAt(eye, tgt, up) {
+  const f = v3.norm(v3.sub(tgt, eye)), s = v3.norm(v3.cross(f, up)), u = v3.cross(s, f);
+  return new Float32Array([s[0],u[0],-f[0],0, s[1],u[1],-f[1],0, s[2],u[2],-f[2],0, -v3.dot(s,eye),-v3.dot(u,eye),v3.dot(f,eye),1]);
+}
+function perspective(fovy, aspect, n, f) {
+  const t = 1 / Math.tan(fovy / 2);
+  return new Float32Array([t/aspect,0,0,0, 0,t,0,0, 0,0,(f+n)/(n-f),-1, 0,0,2*f*n/(n-f),0]);
+}
+function mul4(a, b) {
+  const o = new Float32Array(16);
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k*4+r] * b[c*4+k]; o[c*4+r] = s; }
+  return o;
+}
+
+// ───────────────────────────── camera ─────────────────────────────
+const UP = v3.norm(DATA.up), FWD = v3.norm(DATA.facing), SIDE = v3.cross(UP, FWD);
+const newCam = () => ({ yaw: 0.45, pitch: 0.12, dist: DATA.radius * 2.7, pan: [0, 0, 0] });
+let sharedCam = newCam();
+function camMatrices(cam, aspect) {
+  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const dir = v3.add(v3.add(v3.mul(FWD, cp * Math.cos(cam.yaw)), v3.mul(SIDE, cp * Math.sin(cam.yaw))), v3.mul(UP, sp));
+  const tgt = v3.add(DATA.center, cam.pan), eye = v3.add(tgt, v3.mul(dir, cam.dist));
+  const view = lookAt(eye, tgt, UP);
+  const proj = perspective(35 * Math.PI / 180, aspect, cam.dist * 0.02, cam.dist * 8);
+  return { vp: mul4(proj, view), view, eye };
+}
+
+// ───────────────────────────── GL ─────────────────────────────
+const MESH_VS = `#version 300 es
+in vec3 aPos; in vec3 aNrm; uniform mat4 uVP; uniform mat4 uView; out vec3 vN;
+void main(){ vN = mat3(uView) * aNrm; gl_Position = uVP * vec4(aPos, 1.0); }`;
+const MESH_FS = `#version 300 es
+precision mediump float; in vec3 vN; uniform vec3 uColor; uniform float uAlpha; out vec4 o;
+void main(){ vec3 n = normalize(vN); float d = abs(dot(n, normalize(vec3(-0.35, 0.55, 0.75)))); float h = abs(n.z);
+  o = vec4(uColor * (0.28 + 0.52 * d + 0.25 * h), uAlpha); }`;
+const SEG_VS = `#version 300 es
+in vec3 aA; in vec3 aB; in float aSide; in vec3 aCol; uniform mat4 uVP; uniform vec2 uRes; uniform float uWidth; out vec3 vC;
+void main(){
+  vec4 pa = uVP * vec4(aA, 1.0), pb = uVP * vec4(aB, 1.0);
+  vec2 sa = pa.xy / pa.w * uRes * 0.5, sb = pb.xy / pb.w * uRes * 0.5;
+  vec2 d = sb - sa; d = length(d) < 1e-4 ? vec2(1.0, 0.0) : normalize(d);
+  vec2 n = vec2(-d.y, d.x);
+  vec2 off = n * aSide * uWidth * 0.5 * 2.0 / uRes;
+  gl_Position = vec4(pa.xy + off * pa.w, pa.z, pa.w); vC = aCol; }`;
+const SEG_FS = `#version 300 es
+precision mediump float; in vec3 vC; uniform float uAlpha; out vec4 o; void main(){ o = vec4(vC, uAlpha); }`;
+const PT_VS = `#version 300 es
+in vec3 aPos; in vec3 aCol; uniform mat4 uVP; uniform float uSize; out vec3 vC;
+void main(){ gl_Position = uVP * vec4(aPos, 1.0); gl_PointSize = uSize; vC = aCol; }`;
+const PT_FS = `#version 300 es
+precision mediump float; in vec3 vC; out vec4 o;
+void main(){ vec2 c = gl_PointCoord - 0.5; if (dot(c, c) > 0.25) discard; o = vec4(vC, 1.0); }`;
+
+function program(gl, vs, fs) {
+  const mk = (t, s) => { const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
+  const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, vs)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const loc = {}; const na = gl.getProgramParameter(p, gl.ACTIVE_ATTRIBUTES), nu = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < na; i++) { const a = gl.getActiveAttrib(p, i); loc[a.name] = gl.getAttribLocation(p, a.name); }
+  for (let i = 0; i < nu; i++) { const u = gl.getActiveUniform(p, i); loc[u.name] = gl.getUniformLocation(p, u.name); }
+  return { p, loc };
+}
+
+// colour of a skeleton edge in the hybrid armature: SMPL-X / raw / adjusted bone
+function boneColor(layer, e) {
+  const d = DATA.layers[layer];
+  if (layer === "hybrid" && d.src) { const s = d.src[e]; return s === 1 ? COL.raw : s === 2 ? COL.adjusted : COL.hybrid; }
+  return COL[layer];
+}
+
+class View {
+  constructor(id, canvas) {
+    this.id = id; this.canvas = canvas; this.cam = newCam(); this.visible = true; this.gl = null;
+    const gl = this.gl = canvas.getContext("webgl2", { antialias: true, alpha: false });
+    if (!gl) return;
+    this.mesh = program(gl, MESH_VS, MESH_FS); this.seg = program(gl, SEG_VS, SEG_FS); this.pt = program(gl, PT_VS, PT_FS);
+    this.buf = {}; ["pos", "nrm", "idx", "seg", "segIdx", "pt"].forEach(k => this.buf[k] = gl.createBuffer());
+    this.meshFrameKey = {};
+    this.meshBuf = {};
+    this.segIdxN = 0;
+  }
+  uploadMesh(layer, c, f) {
+    const gl = this.gl; let b = this.meshBuf[layer];
+    if (!b) {
+      b = this.meshBuf[layer] = { pos: gl.createBuffer(), nrm: gl.createBuffer(), idx: gl.createBuffer(), f: -1 };
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.idx); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, faces, gl.STATIC_DRAW);
+    }
+    if (b.f !== f) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, b.pos); gl.bufferData(gl.ARRAY_BUFFER, c.pos, gl.DYNAMIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, b.nrm); gl.bufferData(gl.ARRAY_BUFFER, c.nrm, gl.DYNAMIC_DRAW);
+      b.f = f;
+    }
+    return b;
+  }
+  drawMesh(layer, f, alpha, depthWrite, M) {
+    if (!faces) return;
+    const gl = this.gl, P = this.mesh, c = meshFrame(layer, f), b = this.uploadMesh(layer, c, f);
+    gl.useProgram(P.p);
+    gl.uniformMatrix4fv(P.loc.uVP, false, M.vp); gl.uniformMatrix4fv(P.loc.uView, false, M.view);
+    gl.uniform3fv(P.loc.uColor, COL[layer]); gl.uniform1f(P.loc.uAlpha, alpha);
+    gl.bindBuffer(gl.ARRAY_BUFFER, b.pos); gl.enableVertexAttribArray(P.loc.aPos); gl.vertexAttribPointer(P.loc.aPos, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, b.nrm); gl.enableVertexAttribArray(P.loc.aNrm); gl.vertexAttribPointer(P.loc.aNrm, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.idx);
+    gl.depthMask(depthWrite); gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);   // faces are counter-clockwise seen from outside
+    if (alpha < 1) { gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); } else gl.disable(gl.BLEND);
+    gl.drawElements(gl.TRIANGLES, faces.length, gl.UNSIGNED_INT, 0);
+    gl.depthMask(true); gl.disable(gl.CULL_FACE);
+  }
+  // segments: list of {a:[x,y,z], b:[x,y,z], c:[r,g,b]} drawn as screen-space quads
+  drawSegments(segs, width, M) {
+    if (!segs.length) return;
+    const gl = this.gl, P = this.seg, n = segs.length, data = new Float32Array(n * 4 * 10);
+    let o = 0;
+    for (const s of segs) {
+      const ends = [[s.a, s.b, 1], [s.a, s.b, -1], [s.b, s.a, -1], [s.b, s.a, 1]];
+      for (const [A, B, side] of ends) { data.set(A, o); data.set(B, o + 3); data[o + 6] = side; data.set(s.c, o + 7); o += 10; }
+    }
+    if (this.segIdxN < n) {
+      const ix = new Uint32Array(n * 6); for (let i = 0; i < n; i++) ix.set([i*4, i*4+1, i*4+2, i*4+1, i*4+3, i*4+2], i * 6);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buf.segIdx); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, ix, gl.DYNAMIC_DRAW); this.segIdxN = n;
+    }
+    gl.useProgram(P.p);
+    gl.uniformMatrix4fv(P.loc.uVP, false, M.vp); gl.uniform2f(P.loc.uRes, this.canvas.width, this.canvas.height);
+    gl.uniform1f(P.loc.uWidth, width * this.dpr); gl.uniform1f(P.loc.uAlpha, 1);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buf.seg); gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+    const st = 40;
+    [["aA", 3, 0], ["aB", 3, 12], ["aSide", 1, 24], ["aCol", 3, 28]].forEach(([nm, sz, off]) => { gl.enableVertexAttribArray(P.loc[nm]); gl.vertexAttribPointer(P.loc[nm], sz, gl.FLOAT, false, st, off); });
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buf.segIdx);
+    gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
+    gl.drawElements(gl.TRIANGLES, n * 6, gl.UNSIGNED_INT, 0);
+  }
+  drawPoints(pts, size, M) {     // pts: list of {p:[x,y,z], c:[r,g,b]}
+    if (!pts.length) return;
+    const gl = this.gl, P = this.pt, data = new Float32Array(pts.length * 6);
+    pts.forEach((q, i) => { data.set(q.p, i * 6); data.set(q.c, i * 6 + 3); });
+    gl.useProgram(P.p); gl.uniformMatrix4fv(P.loc.uVP, false, M.vp); gl.uniform1f(P.loc.uSize, size * this.dpr);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buf.pt); gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(P.loc.aPos); gl.vertexAttribPointer(P.loc.aPos, 3, gl.FLOAT, false, 24, 0);
+    gl.enableVertexAttribArray(P.loc.aCol); gl.vertexAttribPointer(P.loc.aCol, 3, gl.FLOAT, false, 24, 12);
+    gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
+    gl.drawArrays(gl.POINTS, 0, pts.length);
+  }
+  resize() {
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.max(1, Math.round(this.canvas.clientWidth * this.dpr)), h = Math.max(1, Math.round(this.canvas.clientHeight * this.dpr));
+    if (this.canvas.width !== w || this.canvas.height !== h) { this.canvas.width = w; this.canvas.height = h; }
+  }
+  begin() {
+    this.resize();
+    const gl = this.gl; gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.clearColor(0.085, 0.09, 0.11, 1); gl.depthMask(true); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    return camMatrices(link.checked ? sharedCam : this.cam, this.canvas.width / this.canvas.height);
+  }
+}
+
+// ───────────────────────────── scene content ─────────────────────────────
+const px = (arr, n, f, i) => { const o = (f * n + i) * 3; return [arr[o], arr[o + 1], arr[o + 2]]; };
+const ok = p => Number.isFinite(p[0]) && Number.isFinite(p[1]) && Number.isFinite(p[2]);
+
+function skeleton(layer, f, color, colorOf) {          // edges of a point layer -> segments
+  const d = L[layer], segs = [];
+  const edges = DATA.layers[layer].edges, arr = d.pts || d.pos;
+  edges.forEach(([a, b], e) => {
+    const A = px(arr, d.n, f, a), B = px(arr, d.n, f, b);
+    if (ok(A) && ok(B)) segs.push({ a: A, b: B, c: colorOf ? colorOf(e) : color });
+  });
+  return segs;
+}
+function jointPoints(layer, f, color) {
+  const d = L[layer], arr = d.pts || d.pos, out = [];
+  for (let i = 0; i < d.n; i++) { const p = px(arr, d.n, f, i); if (ok(p)) out.push({ p, c: color }); }
+  return out;
+}
+let gridSegs = null;
+function floorGrid() {
+  if (gridSegs) return gridSegs;
+  const half = Math.ceil(DATA.radius * 2.2 * 4) / 4, step = 0.25, origin = v3.add(v3.mul(UP, DATA.floor), v3.sub(DATA.center, v3.mul(UP, v3.dot(DATA.center, UP))));
+  gridSegs = [];
+  for (let t = -half; t <= half + 1e-6; t += step) {
+    gridSegs.push({ a: v3.add(origin, v3.add(v3.mul(FWD, t), v3.mul(SIDE, -half))), b: v3.add(origin, v3.add(v3.mul(FWD, t), v3.mul(SIDE, half))), c: COL.grid });
+    gridSegs.push({ a: v3.add(origin, v3.add(v3.mul(SIDE, t), v3.mul(FWD, -half))), b: v3.add(origin, v3.add(v3.mul(SIDE, t), v3.mul(FWD, half))), c: COL.grid });
+  }
+  return gridSegs;
+}
+
+const show = { pose: true, joints: true, mesh: true, fit: true, fitBones: true, hybrid: true, hybridBones: true };
+let overlayAlpha = 0.35;
+
+const SCENES = {
+  pose(v, f, M) { v.drawSegments(floorGrid(), 1, M); if (L.pose) { v.drawSegments(skeleton("pose", f, COL.pose), 3, M); v.drawPoints(jointPoints("pose", f, [0.95, 0.95, 0.95]), 5, M); } },
+  joints(v, f, M) { v.drawSegments(floorGrid(), 1, M); if (L.joints) { v.drawSegments(skeleton("joints", f, COL.joints), 3, M); v.drawPoints(jointPoints("joints", f, [0.9, 0.95, 1]), 5, M); } },
+  mesh(v, f, M) {
+    v.drawSegments(floorGrid(), 1, M);
+    if (L.mesh) { v.drawMesh("mesh", f, 1, true, M); if (L.mesh.joints) v.drawPoints(jointPoints2(L.mesh.joints, f, [0.1, 0.4, 0.3]), 4, M); }
+  },
+  fit(v, f, M) {
+    v.drawSegments(floorGrid(), 1, M);
+    if (L.fit) { v.drawMesh("fit", f, 0.78, true, M); v.drawSegments(skeleton("fit", f, [1, 0.85, 0.86]), 3, M); v.drawPoints(jointPoints("fit", f, [1, 1, 1]), 4, M); }
+  },
+  hybrid(v, f, M) {
+    v.drawSegments(floorGrid(), 1, M);
+    if (L.hybrid) { v.drawMesh("hybrid", f, 0.78, true, M); v.drawSegments(skeleton("hybrid", f, null, e => boneColor("hybrid", e)), 3, M); v.drawPoints(jointPoints("hybrid", f, [1, 1, 1]), 4, M); }
+  },
+  overlay(v, f, M) {
+    v.drawSegments(floorGrid(), 1, M);
+    for (const k of ["mesh", "fit", "hybrid"]) if (L[k] && show[k]) v.drawMesh(k, f, overlayAlpha, false, M);
+    if (L.pose && show.pose) { v.drawSegments(skeleton("pose", f, COL.pose), 3, M); }
+    if (L.joints && show.joints) { v.drawSegments(skeleton("joints", f, COL.joints), 3, M); v.drawPoints(jointPoints("joints", f, COL.joints), 5, M); }
+    if (L.fit && show.fitBones) v.drawSegments(skeleton("fit", f, COL.fit), 2.5, M);
+    if (L.hybrid && show.hybridBones) v.drawSegments(skeleton("hybrid", f, COL.hybrid), 2.5, M);
+  }
+};
+function jointPoints2(d, f, color) { const out = []; for (let i = 0; i < d.n; i++) { const p = px(d.pts, d.n, f, i); if (ok(p)) out.push({ p, c: color }); } return out; }
+
+// ───────────────────────────── page ─────────────────────────────
+const $ = id => document.getElementById(id);
+const link = $("link"), slider = $("slider"), playBtn = $("bPlay");
+const views = {};
+let frame = 0, playing = false, dirty = true, acc = 0, lastT = 0, renders = 0, rateT = 0, rate = 0;
+
+function buildPanels() {
+  const grid = $("grid"), shown = DATA.panels;
+  grid.style.setProperty("--rows", Math.min(2, Math.ceil(shown.length / 2)));
+  shown.forEach((id, i) => {
+    const sec = document.createElement("section"); sec.className = "panel"; sec.id = "p_" + id;
+    if (shown.length % 2 === 1 && i === shown.length - 1) sec.classList.add("wide");
+    const layerKey = LAYER_OF[id], col = layerKey ? hex(COL[layerKey]) : "#d9dde5";
+    sec.innerHTML = `<canvas></canvas><div class="cap"><span class="sw" style="background:${col}"></span>${TITLES[id][0]}<small>${TITLES[id][1]}</small></div><div class="msg"></div>`;
+    grid.appendChild(sec);
+    const missing = id === "overlay" ? !(L.pose || L.joints || L.mesh || L.fit || L.hybrid) : !L[layerKey];
+    if (missing) { sec.classList.add("empty"); sec.querySelector(".msg").textContent = id === "overlay" ? "nothing to overlay" : "not available: " + (DATA.reasons[layerKey] || "no data"); return; }
+    const v = views[id] = new View(id, sec.querySelector("canvas"));
+    if (!v.gl) { sec.classList.add("empty"); sec.querySelector(".msg").textContent = "WebGL 2 is not available in this browser"; delete views[id]; return; }
+    attachMouse(v);
+    new IntersectionObserver(es => { v.visible = es[0].isIntersecting; if (v.visible) dirty = true; }).observe(sec);
+    if (id === "pose" && L.pose.note) addLegend(sec, L.pose.note);
+    if (id === "hybrid") addLegend(sec, `bones: <span style="color:${hex(COL.hybrid)}">SMPL-X</span> · <span style="color:${hex(COL.raw)}">raw (pose data)</span> · <span style="color:${hex(COL.adjusted)}">adjusted</span>`);
+    if (id === "overlay") addToggles(sec);
+  });
+  document.documentElement.style.setProperty("--barh", $("bar").offsetHeight + "px");
+}
+function addLegend(sec, html) { const d = document.createElement("div"); d.className = "legend"; d.innerHTML = html; sec.appendChild(d); }
+function addToggles(sec) {
+  const rows = [["pose", "Pose", "pose", L.pose], ["joints", "SMPL-X joints", "joints", L.joints], ["mesh", "SMPL-X mesh", "mesh", L.mesh],
+    ["fit", "Skinned mesh", "fit", L.fit], ["fitBones", "Skinned armature", "fit", L.fit], ["hybrid", "Hybrid mesh", "hybrid", L.hybrid], ["hybridBones", "Hybrid armature", "hybrid", L.hybrid]];
+  const box = document.createElement("div"); box.className = "toggles";
+  for (const [key, label, colKey, data] of rows) {
+    const l = document.createElement("label"); if (!data) l.classList.add("off");
+    l.innerHTML = `<input type="checkbox" ${show[key] && data ? "checked" : ""} ${data ? "" : "disabled"}><span class="sw" style="background:${hex(COL[colKey])}"></span>${label}`;
+    l.title = data ? "" : (DATA.reasons[colKey] || "no data");
+    l.querySelector("input").addEventListener("change", e => { show[key] = e.target.checked; dirty = true; });
+    box.appendChild(l);
+  }
+  if (L.mesh || L.fit || L.hybrid) {
+    const l = document.createElement("label"); l.innerHTML = `mesh opacity <input type="range" min="5" max="100" value="${Math.round(overlayAlpha * 100)}">`;
+    l.querySelector("input").addEventListener("input", e => { overlayAlpha = e.target.value / 100; dirty = true; });
+    box.appendChild(l);
+  }
+  sec.appendChild(box);
+}
+
+function attachMouse(v) {
+  const c = v.canvas; let drag = null;
+  const cam = () => link.checked ? sharedCam : v.cam;
+  c.addEventListener("pointerdown", e => { c.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, pan: e.button === 2 || e.shiftKey }; });
+  c.addEventListener("pointerup", () => drag = null);
+  c.addEventListener("contextmenu", e => e.preventDefault());
+  c.addEventListener("pointermove", e => {
+    if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
+    const k = cam();
+    if (drag.pan) {
+      const M = camMatrices(k, 1), right = [M.view[0], M.view[4], M.view[8]], upv = [M.view[1], M.view[5], M.view[9]];
+      const s = k.dist * 0.0012 * (c.width / Math.max(c.clientWidth, 1));
+      k.pan = v3.add(k.pan, v3.add(v3.mul(right, -dx * s), v3.mul(upv, dy * s)));
+    } else { k.yaw -= dx * 0.008; k.pitch = Math.max(-1.5, Math.min(1.5, k.pitch + dy * 0.008)); }
+    dirty = true;
+  });
+  c.addEventListener("wheel", e => { e.preventDefault(); const k = cam(); k.dist = Math.max(DATA.radius * 0.3, Math.min(DATA.radius * 12, k.dist * Math.exp(e.deltaY * 0.0012))); dirty = true; }, { passive: false });
+  c.addEventListener("dblclick", () => { Object.assign(cam(), newCam()); dirty = true; });
+}
+
+function setFrame(f) {
+  f = Math.max(0, Math.min(N - 1, f));
+  if (f !== frame) { frame = f; dirty = true; }
+  slider.value = frame;
+  $("frameLabel").textContent = `frame ${frame} / ${N - 1}   ${(frame / fpsNow()).toFixed(2)} s`;
+}
+const fpsNow = () => Math.max(1, parseFloat($("fps").value) || DATA.fps);
+function setPlaying(p) { playing = p; acc = 0; playBtn.textContent = p ? "❚❚ Stop" : "▶ Play"; playBtn.classList.toggle("on", p); }
+function step(d) { setPlaying(false); setFrame(frame + d); }
+
+function tick(t) {
+  const dt = Math.min((t - lastT) / 1000, 0.25); lastT = t;
+  if (playing) {
+    acc += dt * fpsNow() * parseFloat($("speed").value);
+    const adv = Math.floor(acc);
+    if (adv > 0) {
+      acc -= adv; let nf = frame + adv;
+      if (nf > N - 1) { if ($("loop").checked) nf = nf % N; else { nf = N - 1; setPlaying(false); } }
+      setFrame(nf);
+    }
+  }
+  if (dirty) {
+    dirty = false;
+    for (const id in views) { const v = views[id]; if (!v.visible) continue; const M = v.begin(); SCENES[id](v, frame, M); renders++; }
+  }
+  if (t - rateT > 1000) { rate = renders / ((t - rateT) / 1000); renders = 0; rateT = t; $("stat").textContent = playing ? `${rate.toFixed(0)} frames/s drawn` : ""; }
+  requestAnimationFrame(tick);
+}
+
+window.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" && e.target.type === "number") return;
+  const k = e.key;
+  if (k === " ") { e.preventDefault(); setPlaying(!playing); }
+  else if (k === "ArrowLeft") { e.preventDefault(); step(e.shiftKey ? -10 : -1); }
+  else if (k === "ArrowRight") { e.preventDefault(); step(e.shiftKey ? 10 : 1); }
+  else if (k === "Home") { e.preventDefault(); step(-N); }
+  else if (k === "End") { e.preventDefault(); step(N); }
+});
+window.addEventListener("resize", () => { document.documentElement.style.setProperty("--barh", $("bar").offsetHeight + "px"); dirty = true; });
+
+(async function main() {
+  $("fps").value = Math.round(DATA.fps * 100) / 100;
+  slider.max = N - 1;
+  try { await decode(); } catch (e) { document.body.insertAdjacentHTML("beforeend", `<pre style="color:#f88;padding:20px">Could not decode the data: ${e.message}</pre>`); throw e; }
+  buildPanels();
+  $("bFirst").onclick = () => step(-N); $("bLast").onclick = () => step(N); $("bBack").onclick = () => step(-1); $("bFwd").onclick = () => step(1);
+  playBtn.onclick = () => setPlaying(!playing);
+  slider.oninput = () => { setPlaying(false); setFrame(+slider.value); };
+  $("fps").onchange = () => setFrame(frame); link.onchange = () => dirty = true;
+  setFrame(0);
+  window.__viewer = { DATA, L, rig, meshFrame, setFrame, setPlaying, views, show, get frame() { return frame; }, get playing() { return playing; }, step };
+  window.__ready = true;
+  requestAnimationFrame(t => { lastT = rateT = t; tick(t); });
+})();
+</script>
+</body>
+</html>

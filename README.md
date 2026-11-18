@@ -180,14 +180,43 @@ This outputs **`hybrid_channels.npz`** into `data/pose_smplx_hybrid/`.
 - Left and right swapped? Add `--swap-body-sides` and/or `--swap-hand-sides`.
 - Run it with `--help` to see all options.
 
+### 6. Compare everything in the browser
+```
+python preview_compare.py
+```
+
+This writes `data/preview_compare.html` and opens it. Nothing but numpy is needed, and it does not use Blender.
+
+- Top left: the pose (stickman keypoints). Top right: the SMPL-X joints.
+- Middle left: the SMPL-X mesh (`meshed_smplx/`). Middle right: the skinned mesh with its armature (the fit).
+- Scroll down. Bottom left: the hybrid, its bones coloured by SMPL-X / raw / adjusted. Bottom right: the overlay of all layers, with a switch for each.
+- Space plays and stops, left and right arrow step one frame back and forward (shift: 10 frames), Home and End jump to the first and last frame. The buttons and the slider at the top do the same. `speed` and `fps` set the playback rate.
+- Drag rotates, right drag or shift drag pans, the wheel zooms, double click resets. `link cameras` keeps all panels on the same view.
+- A panel without its data says what to run to make it. The others still work.
+
+Options: `--pose-dir FOLDER`, `--model MODEL_FOLDER` (only to get the faces when `skinned_smplx/armature_rig_metadata.npz` is missing), `--hybrid FILE`, `--pose-params FILE`, `--fps N`, `--stride N` (every N-th frame, smaller file), `--panels pose,joints,mesh,fit,hybrid,overlay` (a subset), `--no-open`.
+
 ### Everything at once
-Steps 1, 4 and 5 can be run with one command. Steps that already have their output are skipped:
+Steps 1, 4 and 5 can be run with one command, followed by the preview of step 6. Steps that already have their output are skipped:
 
 ```
 python run_pipeline.py --model models --raw hands
 ```
 
-Step 2 (the meshes) is not part of this command, run it on its own.
+Step 2 (the meshes) is only part of this command with `--meshes`. Without it, run step 2 on its own.
+
+```
+python run_pipeline.py --model models --raw hands --meshes
+```
+
+The mesh step is skipped when `meshed_smplx/smoothed_all_meshes.npy` and `smoothed_all_joints.npy` exist. Add `--remesh` to make them again.
+
+At the end `run_pipeline.py` opens the compare page of step 6. A failing preview never stops the pipeline.
+
+- `--no-preview`: open nothing.
+- `--no-compare`: open the single previews instead: `visualize_joints.py` (pose and joints), `visualize_smplx.py` (mesh, only with `meshed_smplx/`) and `preview_skinned.html` (skinned mesh + armature and hybrid). These need plotly.
+- `--preview-frame N`: frame shown by the single previews.
+- `--preview-args "--fps 25 --stride 2"`: extra arguments for `preview_compare.py`.
 
 ### Using another folder
 By default every script reads and writes `data/`. To use another folder:
@@ -195,7 +224,7 @@ By default every script reads and writes `data/`. To use another folder:
 - `mapping_stickman_to_smplx.py` and `get_skinned_mesh_from_smplx.py`: `--output-dir FOLDER`
 - `get_hybrid_pose_from_stickman.py` and `run_pipeline.py`: `--pose-dir FOLDER`
 - `get_mesh_from_smplx.py`: `--joints FOLDER/smplx_joints.npy --out_meshes FOLDER/meshed_smplx/all_meshes.npy --out_joints FOLDER/meshed_smplx/all_joints.npy`
-- `visualize_joints.py` and `visualize_smplx.py` always read from `data/`.
+- `visualize_joints.py`, `visualize_smplx.py` and `preview_compare.py`: `--pose-dir FOLDER`
 
 If the SMPL-X models are not in a `models` folder next to the scripts, add `--model MODEL_FOLDER` to the scripts in steps 2 and 4. `run_pipeline.py` always needs `--model` (it has no default).
 
@@ -209,7 +238,8 @@ If the SMPL-X models are not in a `models` folder next to the scripts, add `--mo
 | `get_skinned_mesh_from_smplx.py` | torch, smplx | Fitter A, plain SMPL-X fit; pose parameters and rig metadata -> `skinned_smplx/` |
 | `get_hybrid_pose_from_stickman.py` | numpy, `smplx_rig_common.py` | Fitter B, plain fit + raw chains -> `pose_smplx_hybrid/` |
 | `smplx_rig_common.py` | numpy | Shared rig module: bone hierarchy, A-pose rest, SMPL-X skinning, chain definitions and the channel-file format. Imported by `get_hybrid_pose_from_stickman.py` and by the Blender importer |
-| `run_pipeline.py` | | Wrapper: mapping, fitter A and fitter B in order, skipping steps whose outputs exist |
+| `run_pipeline.py` | | Wrapper: mapping, (with `--meshes`) meshes, fitter A and fitter B in order, skipping steps whose outputs exist |
+| `preview_compare.py` | numpy, `smplx_rig_common.py`, `assets/compare_viewer.html` | One browser page: pose, joints, mesh, skinned mesh + armature, hybrid and an overlay, with play / stop and frame stepping |
 | `visualize_joints.py` | plotly | Plots the mapped joints of one frame |
 | `visualize_smplx.py` | plotly, smplx | Plots the smoothed mesh and joints of one frame |
 
