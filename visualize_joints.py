@@ -1,9 +1,11 @@
+import os
 import numpy as np
 import argparse
 import plotly.graph_objects as go
 from joints import joint_mapping, apply_joint_mapping
 
 parser = argparse.ArgumentParser(description="Visualize SMPL-X mesh and joints")
+parser.add_argument("--pose-dir", default="data", help="pose folder holding smplx_joints.npy (default: data)")
 parser.add_argument(
     "--frame",
     type=int,
@@ -12,7 +14,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-unmapped_joints = np.load('data/smplx_joints.npy')[args.frame]  # (N_joints, 3)
+unmapped_joints = np.load(os.path.join(args.pose_dir, 'smplx_joints.npy'))[args.frame]  # (N_joints, 3)
 print(unmapped_joints.shape)
 
 joints, mask = apply_joint_mapping(unmapped_joints, joint_mapping)
