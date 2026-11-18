@@ -108,9 +108,7 @@ venv.bak/
 .mypy_cache/
 
 # smplx model
-*.npz
-*.pkl
-*.zip
+/models/smplx/
 
 # Blender project files
 *.blend
@@ -119,8 +117,3 @@ venv.bak/
 
 # VS
 .vs
-
-# Data
-data/meshed_smplx/
-data/pose_smplx_hybrid/
-data/skinned_smplx/
